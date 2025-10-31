@@ -4,16 +4,13 @@ import os
 from datasets import load_dataset
 from dataset import load_humanevalpack_local
 
-DATASET = load_humanevalpack_local(subsample = 5)
-
+DATASET = load_humanevalpack_local(subsumple = 5)
+# state
 class State(TypedDict):
     problem_id: str
     description: str
     buggy_code: str
     fixed_code: str
-    test_code: str           
-    entry_point: str 
-    expected_solution: str
     reasoning: str
     result: str  # pass/fail
     test_output: str
@@ -22,13 +19,13 @@ class State(TypedDict):
 def load_problem_node(state: State):
     print("Loading problem...")
     problem = DATASET[0]
+    
     state["problem_id"] = problem["task_id"]
     state["description"] = problem["docstring"]
     state["buggy_code"] = problem["buggy_solution"]
     state["fixed_code"] = ""  # to be filled by generate_fix
     state["test_code"] = problem["test"]
     state["entry_point"] = problem["entry_point"]
-    state["expected_solution"] = problem["canonical_solution"]
 
     print(f"Loaded: {state['problem_id']} - {state['entry_point']}")
     return state

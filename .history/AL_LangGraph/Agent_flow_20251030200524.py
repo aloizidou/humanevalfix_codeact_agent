@@ -11,9 +11,6 @@ class State(TypedDict):
     description: str
     buggy_code: str
     fixed_code: str
-    test_code: str           
-    entry_point: str 
-    expected_solution: str
     reasoning: str
     result: str  # pass/fail
     test_output: str
@@ -28,7 +25,6 @@ def load_problem_node(state: State):
     state["fixed_code"] = ""  # to be filled by generate_fix
     state["test_code"] = problem["test"]
     state["entry_point"] = problem["entry_point"]
-    state["expected_solution"] = problem["canonical_solution"]
 
     print(f"Loaded: {state['problem_id']} - {state['entry_point']}")
     return state
