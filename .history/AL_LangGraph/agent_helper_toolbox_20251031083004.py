@@ -6,7 +6,7 @@ MODEL = "qwen2.5vl:7b"
 TEMPERATURE = 0.4  
 
 def get_text_response(prompt: str) -> str:
-    """Get text response from LLM which will help with our logical reasoning"""
+    """Query your local Ollama model and return text output."""
     system_message = {
         "role": "system",
         "content": "You are an expert Python code analyst. Be concise and technical."

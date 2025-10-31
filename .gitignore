@@ -14,3 +14,5 @@ venv/
 # Ignore OS or IDE files
 .DS_Store
 .vscode/
+
+.history

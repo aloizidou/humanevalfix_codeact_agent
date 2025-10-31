@@ -113,22 +113,22 @@ def run_tests_node(state):
         # Capture stdout (for print output)
         output_buffer = io.StringIO()
         with contextlib.redirect_stdout(output_buffer):
-            print("-> Final code being tested:\n", full_code)
+            print("🧠 Final code being tested:\n", full_code)
 
             exec(full_code, namespace)
 
         # If no errors raised, all tests passed
         output_text = output_buffer.getvalue()
-        state["test_output"] = output_text or "SUCESSFUL!!! All tests executed successfully."
+        state["test_output"] = output_text or "✅ All tests executed successfully."
         state["result"] = "pass"
-        print(f"SUCCESFUL!!! All tests passed for {entry_point}")
+        print(f"✅ All tests passed for {entry_point}")
 
     except Exception as e:
         # Capture traceback for debugging
         error_trace = traceback.format_exc()
-        state["test_output"] = f"FAILED: Test failure:\n{error_trace}"
+        state["test_output"] = f"❌ Test failure:\n{error_trace}"
         state["result"] = "fail"
-        print(f"FAILED: Tests failed for {entry_point}\n{error_trace}")
+        print(f"❌ Tests failed for {entry_point}\n{error_trace}")
 
     return state
 
@@ -142,10 +142,10 @@ def run_tests_node(state):
 #     retries = state.get("retries", 0)
 
 #     if result == "pass":
-#         print(f"SUCCESFUL!!! All tests passed for problem {state.get('problem_id', 'unknown')}")
+#         print(f"✅ All tests passed for problem {state.get('problem_id', 'unknown')}")
 #         state["next_action"] = "log_result"
 #     else:
-#         print(f"FAILED: Tests failed. Passing error info back to fixer...")
+#         print(f"❌ Tests failed. Passing error info back to fixer...")
 #         state["next_action"] = "generate_fix"
 #         state["error_feedback"] = test_output
 #         state["retries"] = retries + 1
@@ -172,10 +172,10 @@ def evaluate_result_node(state: State):
         state["history"] = history
 
     if result == "pass":
-        print(f"SUCCESFUL!!! All tests passed for problem {state.get('problem_id', 'unknown')}")
+        print(f"✅ All tests passed for problem {state.get('problem_id', 'unknown')}")
         state["next_action"] = "log_result"
     else:
-        print(f"FAILED: Passing error info back to fixer...")
+        print(f"❌ Tests failed. Passing error info back to fixer...")
         state["next_action"] = "generate_fix"
         state["error_feedback"] = test_output
         state["retries"] = retries + 1
@@ -251,7 +251,7 @@ def save_graph_visualization(app):
             f.write(png_graph)
         print("Graph visualization saved to ./data/flow_graphs/agent_logic_graph.png")
     except Exception as e:
-        print("FAILED: Visualization failed:", e)
+        print("❌ Visualization failed:", e)
 
 # if __name__ == "__main__":
 app = compile_graph()

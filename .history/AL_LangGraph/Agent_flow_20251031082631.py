@@ -29,7 +29,7 @@ class State(TypedDict):
 
 # Node 1: Load problem 
 def load_problem_node(state: State):
-    print(">>>> Loading problem...")
+    print("Loading problem...")
     problem = DATASET[0]
     state["problem_id"] = problem["task_id"]
     state["docstring_description"] = problem["docstring"]
@@ -45,7 +45,7 @@ def load_problem_node(state: State):
 
 # Node 2 - Analyze the bug 
 def analyze_bug_node(state: State):
-    print(">>>> Analyzing bug with gemma reasoning...")
+    print("Analyzing bug with gemma reasoning...")
 
     buggy_code = state.get("buggy_code", "")
     description = state.get("docstring_description", "")
@@ -70,11 +70,11 @@ def analyze_bug_node(state: State):
 
 # Node 3 - here we Generate the correction 
 def generate_fix_node(state: State):
-    print(">>>> Generating fix using reasoning...")
+    print("Generating fix using reasoning...")
 
     buggy_code = state.get("buggy_code", "")
     reasoning = state.get("reasoning", "")
-    description_of_question = state.get("human_question", "")
+    question = state.get("question", "")
 
     prompt = f"""
     You are a Python expert tasked with fixing code bugs.
@@ -86,7 +86,7 @@ def generate_fix_node(state: State):
     {reasoning}
 
     Now write ONLY the corrected Python function code.
-    Do not include explanations or Markdown code blocks. re-read the {description_of_question}, if values are missing add a logical unit. ensure concise and correct answeres
+    Do not include explanations or Markdown code blocks. re-read the {human_question}, if values are missing add a logical unit. ensure concise and correct answeres
     """
     fixed_code = get_text_response(prompt)
     cleaned_code = re.sub(r"```.*?```", lambda m: m.group(0).replace("```python", "").replace("```", ""), fixed_code, flags=re.S)
@@ -97,7 +97,7 @@ def generate_fix_node(state: State):
 
 
 def run_tests_node(state):
-    print(">>>> Running real tests from dataset...")
+    print("🧪 Running real tests from dataset...")
 
     fixed_code = state.get("fixed_code", "")
     test_code = state.get("test_code", "")
@@ -113,22 +113,22 @@ def run_tests_node(state):
         # Capture stdout (for print output)
         output_buffer = io.StringIO()
         with contextlib.redirect_stdout(output_buffer):
-            print("-> Final code being tested:\n", full_code)
+            print("🧠 Final code being tested:\n", full_code)
 
             exec(full_code, namespace)
 
         # If no errors raised, all tests passed
         output_text = output_buffer.getvalue()
-        state["test_output"] = output_text or "SUCESSFUL!!! All tests executed successfully."
+        state["test_output"] = output_text or "✅ All tests executed successfully."
         state["result"] = "pass"
-        print(f"SUCCESFUL!!! All tests passed for {entry_point}")
+        print(f"✅ All tests passed for {entry_point}")
 
     except Exception as e:
         # Capture traceback for debugging
         error_trace = traceback.format_exc()
-        state["test_output"] = f"FAILED: Test failure:\n{error_trace}"
+        state["test_output"] = f"❌ Test failure:\n{error_trace}"
         state["result"] = "fail"
-        print(f"FAILED: Tests failed for {entry_point}\n{error_trace}")
+        print(f"❌ Tests failed for {entry_point}\n{error_trace}")
 
     return state
 
@@ -142,10 +142,10 @@ def run_tests_node(state):
 #     retries = state.get("retries", 0)
 
 #     if result == "pass":
-#         print(f"SUCCESFUL!!! All tests passed for problem {state.get('problem_id', 'unknown')}")
+#         print(f"✅ All tests passed for problem {state.get('problem_id', 'unknown')}")
 #         state["next_action"] = "log_result"
 #     else:
-#         print(f"FAILED: Tests failed. Passing error info back to fixer...")
+#         print(f"❌ Tests failed. Passing error info back to fixer...")
 #         state["next_action"] = "generate_fix"
 #         state["error_feedback"] = test_output
 #         state["retries"] = retries + 1
@@ -153,7 +153,7 @@ def run_tests_node(state):
 #     return state
 
 def evaluate_result_node(state: State):
-    print(">>>> Evaluating test result...")
+    print("🧮 Evaluating test result...")
 
     result = state.get("result", "unknown")
     test_output = state.get("test_output", "")
@@ -172,10 +172,10 @@ def evaluate_result_node(state: State):
         state["history"] = history
 
     if result == "pass":
-        print(f"SUCCESFUL!!! All tests passed for problem {state.get('problem_id', 'unknown')}")
+        print(f"✅ All tests passed for problem {state.get('problem_id', 'unknown')}")
         state["next_action"] = "log_result"
     else:
-        print(f"FAILED: Passing error info back to fixer...")
+        print(f"❌ Tests failed. Passing error info back to fixer...")
         state["next_action"] = "generate_fix"
         state["error_feedback"] = test_output
         state["retries"] = retries + 1
@@ -185,30 +185,30 @@ def evaluate_result_node(state: State):
 
 
 def log_result_node(state):
-    print(">>>> Logging result...")
+    print("Logging result...")
     summary = f"Task {state['problem_id']} completed with result: {state['result']}"
     print(summary)
     state["summary"] = summary
     return state
 
 # function for conditional edge 
-# def route_result(state: State):
-#     """Route to next step based on test result."""
-#     if state.get("result") == "fail":
-#         return "generate_fix"
-#     else:
-#         return "log_result"
 def route_result(state: State):
-    """Route to next step based on evaluation outcome."""
-    next_action = state.get("next_action", "log_result")
-    retries = state.get("retries", 0)
-
-    # Stop endless loops
-    if retries >= 10:
-        print("Max retry limit reached. Logging result and moving on.")
+    """Route to next step based on test result."""
+    if state.get("result") == "fail":
+        return "generate_fix"
+    else:
         return "log_result"
+# def route_result(state: State):
+#     """Route to next step based on evaluation outcome."""
+#     next_action = state.get("next_action", "log_result")
+#     retries = state.get("retries", 0)
 
-    return next_action
+#     # Stop endless loops
+#     if retries >= 10:
+#         print("Max retry limit reached. Logging result and moving on.")
+#         return "log_result"
+
+#     return next_action
 
 
 # --- Define the LangGraph ---
@@ -251,7 +251,7 @@ def save_graph_visualization(app):
             f.write(png_graph)
         print("Graph visualization saved to ./data/flow_graphs/agent_logic_graph.png")
     except Exception as e:
-        print("FAILED: Visualization failed:", e)
+        print("❌ Visualization failed:", e)
 
 # if __name__ == "__main__":
 app = compile_graph()
