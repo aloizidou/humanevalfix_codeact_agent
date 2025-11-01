@@ -15,7 +15,7 @@ The agent follows a ReAct-style workflow:
 ### Framework and Model
 - Framework: LangGraph  
 - Agent type: ReAct-style agent with a code interpreter tool  
-- Model: Qwen3-0.6B  
+- Model: qwen2.5vl:7b 
 
 ### Evaluation
 - Benchmark: Python subset of HumanEvalFix  
@@ -27,5 +27,5 @@ The agent follows a ReAct-style workflow:
 The diagram below shows the logic of the agent pipeline:
 
 <p align="center">
-  <img src="data/flow_graphs/agent_logic_graph.png" alt="Agent Logic Flow" width="300">
+  <img src="reports/flow_graphs/agent_logic_graph.png" alt="Agent Logic Flow" width="300">
 </p>
