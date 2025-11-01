@@ -3,7 +3,7 @@ from langgraph.graph import StateGraph, START, END
 import os
 from datasets import load_dataset
 from dataset import load_humanevalpack_local
-from agent_helper_toolbox import get_text_response
+from agent_helper_toolbox import get_text_response, log_result_to_jsonl
 import io
 import contextlib
 import traceback
@@ -29,76 +29,147 @@ class State(TypedDict):
 
 # Node 1: Load problem 
 def load_problem_node(state: State):
+    print("=================================")
     print(">>>> Loading problem...")
-    problem = DATASET[0]
+    print("=================================")
+    problem = DATASET[3]
     state["problem_id"] = problem["task_id"]
     state["docstring_description"] = problem["docstring"]
     state["buggy_code"] = problem["buggy_solution"]
-    state["fixed_code"] = ""  # to be filled by generate_fix
+    state["fixed_code"] = "" 
     state["test_code"] = problem["test"]
     state["entry_point"] = problem["entry_point"]
     state["expected_solution"] = problem["canonical_solution"]
     state["human_question"] = problem["instruction"]
+    state["bug_type"] =  problem["bug_type"]
 
     print(f"Loaded Problem: {state['problem_id']} - {state['entry_point']}")
     return state
 
 # Node 2 - Analyze the bug 
 def analyze_bug_node(state: State):
+    print("=================================")
     print(">>>> Analyzing bug with gemma reasoning...")
-
+    print("=================================")
     buggy_code = state.get("buggy_code", "")
-    description = state.get("docstring_description", "")
-    description_of_question = state.get("human_question", "")
+    docstring_description = state.get("docstring_description", "")
+    human_question = state.get("human_question", "")
+    entry_point = state.get("entry_point", "")
+    bug_type = state.get("bug_type", "")
 
     prompt = f"""
-    You are a Python code expert.
-    Find and explain the bug in this code. No need to write the correct function.
+    You are a Python expert reviewing a function that fails its unit tests.
 
-    Problem description:
-    {description}
+    Task Description:
+    {docstring_description}
+
+    Human Instruction:
+    {human_question}
+
+    Function name: {entry_point}
+    Bug type: {bug_type}
 
     Buggy code:
     {buggy_code}
 
-    Explain what is wrong in the code and what should be changed. Another way you could think about it is this {description_of_question}
+    Output format:
+    1. **Intended Purpose:** What the function is supposed to do.
+    2. **Bug Location:** Which line or logic part contains the error.
+    3. **Error Explanation:** Why the code fails (e.g., wrong operator, incorrect condition, missing logic).
+    4. **Suggested Fix (in English) step by step:** What should be changed, without writing the code itself.
+    5. **Edge Case Handling** Describe how the function should behave for edge cases such as empty or very short inputs.
+    Rules:
+    - Do NOT return any Python code.
+    - Do NOT use Markdown or backticks.
+    - Be concise and technical.
+
     """
+
     reasoning = get_text_response(prompt)
     state["reasoning"] = reasoning
     print("Reasoning:", reasoning)
     return state
 
 # Node 3 - here we Generate the correction 
-def generate_fix_node(state: State):
-    print(">>>> Generating fix using reasoning...")
+# def generate_fix_node(state: State):
+#     print(">>>> Generating fix using reasoning...")
 
+#     buggy_code = state.get("buggy_code", "")
+#     reasoning = state.get("reasoning", "")
+#     description_of_question = state.get("human_question", "")
+#     entry_point = state.get("entry_point", "")
+
+#     prompt = f"""
+#     You are a Python expert tasked with fixing code bugs.
+
+#     Buggy code:
+#     {buggy_code}
+
+#     Reasoning about the bug:
+#     {reasoning}
+
+#     Now write ONLY the corrected Python function code.
+#     Do not include explanations or Markdown code blocks. re-read the {description_of_question}, if values are missing add a logical unit. ensure concise and correct answeres
+#     """
+#     fixed_code = get_text_response(prompt)
+#     cleaned_code = re.sub(r"```.*?```", lambda m: m.group(0).replace("```python", "").replace("```", ""), fixed_code, flags=re.S)
+#     state["fixed_code"] = cleaned_code.strip()
+
+#     print("Generated Fix:\n", state["fixed_code"])
+#     return state
+
+def generate_fix_node(state: State):
+    print("=================================")
+    print(">>>> Generating fix using reasoning...")
+    print("=================================")
     buggy_code = state.get("buggy_code", "")
     reasoning = state.get("reasoning", "")
     description_of_question = state.get("human_question", "")
+    entry_point = state.get("entry_point", "")
 
     prompt = f"""
-    You are a Python expert tasked with fixing code bugs.
+    You are a Python expert fixing a function that currently fails unit tests.
+
+    Task:
+    {state.get("description_of_question", "")}
 
     Buggy code:
-    {buggy_code}
+    {state.get("buggy_code", "")}
 
     Reasoning about the bug:
-    {reasoning}
+    {state.get("reasoning", "")}
 
-    Now write ONLY the corrected Python function code.
-    Do not include explanations or Markdown code blocks. re-read the {description_of_question}, if values are missing add a logical unit. ensure concise and correct answeres
+    Requirements:
+    - The fixed function must start with exactly: def {state.get("entry_point")}(
+    - Use only Python standard library, no imports unless necessary.
+    - Pass all test cases implied by the problem.
+    - Be logically correct and efficient.
+    - Output *only* valid Python code (no comments, no Markdown).
+    - Make sure the function handles edge cases safely (e.g., empty lists, indexes, division by zero).
+
+    Now return the corrected code:
     """
+
     fixed_code = get_text_response(prompt)
-    cleaned_code = re.sub(r"```.*?```", lambda m: m.group(0).replace("```python", "").replace("```", ""), fixed_code, flags=re.S)
-    state["fixed_code"] = cleaned_code.strip()
+
+    # Clean up any Markdown remnants or extra formatting
+    cleaned_code = (
+        fixed_code.replace("```python", "")
+                  .replace("```", "")
+                  .strip()
+    )
+
+    state["fixed_code"] = cleaned_code
 
     print("Generated Fix:\n", state["fixed_code"])
     return state
 
 
-def run_tests_node(state):
-    print(">>>> Running real tests from dataset...")
 
+def run_tests_node(state):
+    print("=================================")
+    print(">>>> Running real tests from dataset...")
+    print("=================================")
     fixed_code = state.get("fixed_code", "")
     test_code = state.get("test_code", "")
     entry_point = state.get("entry_point", "unknown_function")
@@ -134,61 +205,68 @@ def run_tests_node(state):
 
 
 # Node 4: Evaluate result 
-# def evaluate_result_node(state: State):
-#     print("Evaluating test result...")
-
-#     result = state.get("result", "unknown")
-#     test_output = state.get("test_output", "")
-#     retries = state.get("retries", 0)
-
-#     if result == "pass":
-#         print(f"SUCCESFUL!!! All tests passed for problem {state.get('problem_id', 'unknown')}")
-#         state["next_action"] = "log_result"
-#     else:
-#         print(f"FAILED: Tests failed. Passing error info back to fixer...")
-#         state["next_action"] = "generate_fix"
-#         state["error_feedback"] = test_output
-#         state["retries"] = retries + 1
-
-#     return state
-
 def evaluate_result_node(state: State):
-    print(">>>> Evaluating test result...")
-
+    print("=================================")
+    print("Evaluating test result...")
+    print("=================================")
     result = state.get("result", "unknown")
     test_output = state.get("test_output", "")
     retries = state.get("retries", 0)
-
-    # Optional history setup
-    if state.get("save_history", False):
-        history = state.get("history", [])
-        history.append({
-            "attempt": retries + 1,
-            "fixed_code": state.get("fixed_code", ""),
-            "reasoning": state.get("reasoning", ""),
-            "result": result,
-            "test_feedback": test_output[:300]  # keep first 300 chars for readability
-        })
-        state["history"] = history
 
     if result == "pass":
         print(f"SUCCESFUL!!! All tests passed for problem {state.get('problem_id', 'unknown')}")
         state["next_action"] = "log_result"
     else:
-        print(f"FAILED: Passing error info back to fixer...")
+        print(f"FAILED: Tests failed. Passing error info back to fixer...")
         state["next_action"] = "generate_fix"
         state["error_feedback"] = test_output
         state["retries"] = retries + 1
 
     return state
 
+# def evaluate_result_node(state: State):
+#     print(">>>> Evaluating test result...")
+
+#     result = state.get("result", "unknown")
+#     test_output = state.get("test_output", "")
+#     retries = state.get("retries", 0)
+
+#     # Optional history setup
+#     if state.get("save_history", False):
+#         history = state.get("history", [])
+#         history.append({
+#             "attempt": retries + 1,
+#             "fixed_code": state.get("fixed_code", ""),
+#             "reasoning": state.get("reasoning", ""),
+#             "result": result,
+#             "test_feedback": test_output[:300]  # keep first 300 chars for readability
+#         })
+#         state["history"] = history
+
+#     if result == "pass":
+#         print(f"SUCCESFUL!!! All tests passed for problem {state.get('problem_id', 'unknown')}")
+#         state["next_action"] = "log_result"
+#     else:
+#         print(f"FAILED: Passing error info back to fixer...")
+#         state["next_action"] = "generate_fix"
+#         state["error_feedback"] = test_output
+#         state["retries"] = retries + 1
+
+#     return state
+
 def log_result_node(state):
-    print(">>>> Logging result...")
+    print("=================================")
+    print("Logging result...")
+    print("=================================")
     summary = f"Task {state['problem_id']} completed with result: {state['result']}"
     print(summary)
     state["summary"] = summary
+    log_result_to_jsonl(state)
     return state
 
+
+
+#----------------------------
 # function for conditional edge 
 # def route_result(state: State):
 #     """Route to next step based on test result."""
@@ -202,7 +280,7 @@ def route_result(state: State):
     retries = state.get("retries", 0)
 
     # Stop endless loops
-    if retries >= 10:
+    if retries >= 3:
         print("Max retry limit reached. Logging result and moving on.")
         return "log_result"
 
@@ -254,7 +332,7 @@ def save_graph_visualization(app):
 # if __name__ == "__main__":
 app = compile_graph()
 save_graph_visualization(app)
-# state = {}
-state = {"save_history": True}
+state = {}
+# state = {"save_history": True}
 result = app.invoke(state)
 # print("\nFinal state:\n", result)

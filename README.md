@@ -27,5 +27,5 @@ The agent follows a ReAct-style workflow:
 The diagram below shows the logic of the agent pipeline:
 
 <p align="center">
-  <img src="reports/flow_graphs/agent_logic_graph.png" alt="Agent Logic Flow" width="300">
+  <img src="reports/flow_graphs/agent_logic_graph.png" alt="Agent Logic Flow" width="180">
 </p>
