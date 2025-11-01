@@ -182,8 +182,6 @@ def evaluate_result_node(state: State):
 
     return state
 
-
-
 def log_result_node(state):
     print(">>>> Logging result...")
     summary = f"Task {state['problem_id']} completed with result: {state['result']}"
@@ -246,10 +244,10 @@ def compile_graph():
 def save_graph_visualization(app):
     try:
         png_graph = app.get_graph().draw_mermaid_png()
-        os.makedirs("./data/flow_graphs", exist_ok=True)
-        with open("./data/flow_graphs/agent_logic_graph.png", "wb") as f:
+        os.makedirs("./reports/flow_graphs", exist_ok=True)
+        with open("./reports/flow_graphs/agent_logic_graph.png", "wb") as f:
             f.write(png_graph)
-        print("Graph visualization saved to ./data/flow_graphs/agent_logic_graph.png")
+        print("Graph visualization saved to ./reports/flow_graphs/agent_logic_graph.png")
     except Exception as e:
         print("FAILED: Visualization failed:", e)
 
