@@ -9,6 +9,11 @@ import contextlib
 import traceback
 import re
 from typing import TypedDict, List, Optional, Dict, Any
+import re
+import io
+import contextlib
+import traceback
+
 
 
 DATASET = load_humanevalpack_local()
@@ -127,6 +132,11 @@ def analyze_bug_node(state: State):
         4. Suggested Fix (in English): Describe step by step what should be changed, no code.
         5. Edge Case Handling: Note how to handle special cases.
 
+        If the error type is TypeError, review the function’s parameter list and operations to ensure they match expected input types.
+        Possible causes: wrong parameter count, incompatible operations (e.g., int + str), "
+        or incorrect return type.
+
+
         Rules:
         - Do NOT return any Python code.
         - Be concise and technical.
@@ -172,6 +182,9 @@ def generate_fix_node(state: State):
     6. Handle edge cases safely (empty lists, zero division, invalid inputs, etc.).
     7. Return **only valid Python code** — no Markdown, explanations, or comments.
     8. Keep the exact same function signature: do not add or remove parameters.
+    9. Ensure that variable types match the expected behavior (e.g., do not mix strings and numbers).
+    10. Return values of the correct type as implied by the task description and tests.
+
 
     Make sure the function behaves correctly for typical and edge-case inputs implied by the description (e.g., positive, negative, zero, decimal values).
     ### Now output ONLY the corrected function below:
@@ -202,11 +215,6 @@ def run_tests_node(state: State):
     print("=================================")
     print(">>>> Running tests on the fixed code...")
     print("=================================")
-
-    import re
-    import io
-    import contextlib
-    import traceback
 
     # --- Reset transient test data ---
     state["test_output"] = ""
@@ -272,14 +280,16 @@ def run_tests_node(state: State):
         error_type = type(e).__name__
         error_message = str(e)
 
-        if error_type == "AssertionError":
-            # Try to extract the failed assertion line
-            match = re.search(r"assert\s+(.*?)\n", error_trace)
-            if match:
-                failed_line = match.group(1).strip()
-                error_hint = f"Assertion failed on: {failed_line}"
-            else:
-                error_hint = "Assertion failed — output does not match expected result."
+        # --- Extract failed assertion line if no message ---
+        if error_type == "AssertionError" and not error_message:
+            tb_lines = error_trace.splitlines()
+            failed_line = ""
+            for line in reversed(tb_lines):
+                if line.strip().startswith("assert "):
+                    failed_line = line.strip()
+                    break
+            if failed_line:
+                error_message = f"Failed assertion: {failed_line}"
 
         state["result"] = "fail"
         state["test_output"] = output_buffer.getvalue().strip() + "\n" + error_trace
@@ -290,7 +300,7 @@ def run_tests_node(state: State):
         }
         state["error_type"] = error_type
         state["error_message"] = error_message
-
+        
         # --- Generate readable hint ---
         error_hint = extract_error_hint(error_trace, error_type)
         if "positional argument" in error_message:
@@ -338,7 +348,7 @@ def route_result(state: State):
     result = state.get("result", "fail")
 
     # if max retries reached, stop
-    if retries >= 2:
+    if retries >= 5:
         print("Max retry limit reached. Logging result and moving on.")
         return "log_result"
 
@@ -393,14 +403,6 @@ def save_graph_visualization(app):
     except Exception as e:
         print("FAILED: Visualization failed:", e)
 
-# if __name__ == "__main__":
-# app = compile_graph()
-# save_graph_visualization(app)
-# state = {}
-# # state = {"save_history": True}
-# result = app.invoke(state)
-# print("\nFinal state:\n", result)
-
 def humanevalfix_batch_run():
     """
     Run all HumanEvalFix problems through the LangGraph agent sequentially.
@@ -432,8 +434,13 @@ def humanevalfix_batch_run():
 
         except Exception as e:
             print(f"Error on problem {idx}: {e}")
+    
+    # --- Compute pass@1 metric from counts ---
+    total_attempted = counts["pass"] + counts["fail"]
+    pass_at_1 = (counts["pass"] / total_attempted) * 100 if total_attempted > 0 else 0.0
 
     print("\n✅ Batch run completed.")
     print("Final counts:", counts)
+    print(f"Pass@1: {pass_at_1:.2f}%")
     
 humanevalfix_batch_run()

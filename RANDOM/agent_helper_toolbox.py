@@ -7,11 +7,11 @@ import re
 
 client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
 
-MODEL = "gemma3:4b"
+MODEL = "gemma3:27b"
 TEMPERATURE = 0.5 
 
 PROCESSED_DIR = os.path.join("data", "processed")
-RESULTS_FILE = os.path.join(PROCESSED_DIR, "results_log.jsonl")
+RESULTS_FILE = os.path.join(PROCESSED_DIR, "results_log1.jsonl")
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 def get_text_response(prompt: str) -> str:
