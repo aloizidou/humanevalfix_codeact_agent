@@ -2,18 +2,17 @@ from openai import OpenAI
 import os
 import json
 from datetime import datetime
-
-# --- File paths ---
-PROCESSED_DIR = os.path.join("data", "processed")
-RESULTS_FILE = os.path.join(PROCESSED_DIR, "results_log.jsonl")
-
-os.makedirs(PROCESSED_DIR, exist_ok=True)
+import re
 
 
 client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
 
 MODEL = "gemma3:4b"
-TEMPERATURE = 0.6  
+TEMPERATURE = 0.5 
+
+PROCESSED_DIR = os.path.join("data", "processed")
+RESULTS_FILE = os.path.join(PROCESSED_DIR, "results_log.jsonl")
+os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 def get_text_response(prompt: str) -> str:
     """Get text response from LLM which will help with our logical reasoning"""
@@ -36,15 +35,18 @@ def log_result_to_jsonl(state: dict):
     Keeps one JSON object per line.
     """
     record = {
-        "timestamp": datetime.now().isoformat(),
         "task_id": state.get("problem_id"),
         "result": state.get("result"),
+        "retries": state.get("retries"),
+        "failure_symptoms": state.get("failure_symptoms"),
         "bug_type": state.get("bug_type"),
-        "entry_point": state.get("entry_point"),
+        "error_type": state.get("error_type"),
+        "error_hint": state.get("error_hint"),
         "reasoning": state.get("reasoning"),
         "fixed_code": state.get("fixed_code"),
         "test_output": state.get("test_output"),
-        "error": state.get("error"),
+        "entry_point": state.get("entry_point"),
+        "timestamp": datetime.now().isoformat(),
     }
 
     with open(RESULTS_FILE, "a") as f:
@@ -53,44 +55,36 @@ def log_result_to_jsonl(state: dict):
 
     print(f"Logged result for {record['task_id']} to {RESULTS_FILE}")
 
-
-def load_all_results():
-    """
-    Load all saved records from the JSONL file.
-    Returns a list of dictionaries.
-    """
-    if not os.path.exists(RESULTS_FILE):
-        print("No results found yet.")
-        return []
-
-    with open(RESULTS_FILE, "r") as f:
-        return [json.loads(line) for line in f]
-
-import re
-
-def extract_error_hint(test_output: str) -> str:
+def extract_error_hint(test_output: str, error_type: str = None) -> str:
     """
     Analyze test output or traceback text and return a short human-readable hint.
+    Uses both the traceback string and the Python exception type if available.
     """
-    if not test_output:
+
+    if not test_output and not error_type:
         return "No error detected."
 
     error_patterns = {
         "IndexError": "IndexError: The code likely uses an invalid index. Ensure loop bounds and list accesses are safe.",
-        "AssertionError": "AssertionError: The output does not match expected results. Recheck logic or return values.",
+        "AssertionError": "AssertionError: The output does not match expected results. Recheck logic or return values. This means we run some tests and the code did not pass — make sure you include edge cases.",
         "TypeError": "TypeError: Check for invalid operations or mismatched data types (e.g., int + str).",
         "ValueError": "ValueError: Ensure inputs are valid and conversions (like int() or float()) are handled safely.",
         "KeyError": "KeyError: Dictionary key might be missing. Use dict.get() or check keys before access.",
-        "NameError": "NameError: Some variable or function is undefined. Make sure all identifiers are declared.",
-        "SyntaxError": "SyntaxError: Generated code may have invalid Python syntax. Recheck indentation or missing colons.",
+        "NameError": "NameError: Some variable or function is NOT defined, or defined wrongly. Make sure all identifiers are declared.",
+        "SyntaxError": "SyntaxError: Generated code may have invalid Python syntax. Recheck indentation, parentheses, or missing colons.",
         "ZeroDivisionError": "ZeroDivisionError: Avoid dividing by zero — add a conditional guard.",
         "RecursionError": "RecursionError: Infinite recursion detected — add base conditions or iterative logic."
     }
 
-    # Find first matching known error
-    for error_type, hint in error_patterns.items():
-        if re.search(error_type, test_output):
+    # Step 1 — look for known error names in the traceback
+    for error_key, hint in error_patterns.items():
+        if re.search(error_key, test_output or ""):
             return hint
 
-    # Default fallback if unknown error
-    return "Unknown error encountered. Review test output for clues."
+    # Step 2 — fallback to using the explicit error type
+    if error_type and error_type in error_patterns:
+        return error_patterns[error_type]
+
+    # Step 3 — default fallback
+    return "Unknown error encountered. Review traceback for details."
+
