@@ -10,7 +10,7 @@ MODEL = "gemma3:27b"
 TEMPERATURE = 0.5 
 
 PROCESSED_DIR = os.path.join("data", "processed")
-RESULTS_FILE = os.path.join(PROCESSED_DIR, "results_log1.jsonl")
+RESULTS_FILE = os.path.join(PROCESSED_DIR, "results_log.jsonl")
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
 def get_text_response(prompt: str) -> str:
@@ -83,6 +83,6 @@ def extract_error_hint(test_output: str, error_type: str = None) -> str:
     # fallback to using the explicit error type
     if error_type and error_type in error_patterns:
         return error_patterns[error_type]
-        
+
     return "Unknown error encountered. Review traceback for details."
 

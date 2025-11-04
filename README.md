@@ -31,7 +31,12 @@ The diagram below shows the logic of the agent pipeline:
 
 
 ### How to Run
-bash: python -m organized_agent.main
+
+# 1. Create environment and install dependencies
+pip install -r requirements.txt
+
+# 2. Run the main experiment
+python -m organized_agent.main
 
 ### Data and Method
 
@@ -55,41 +60,12 @@ While access to the tests would likely improve performance, this approach better
 
 ### Results
 
-Using **Gemma 3 (27B)** under local inference, the agent achieved a **pass@1 accuracy of 54.5%** on the HumanEvalFix Python subset. The model never accessed the test cases during generation, relying only on the buggy code, docstring, instruction, and bug metadata. Despite the test-blind setup, it successfully repaired over half of the benchmark tasks, demonstrating strong reasoning and debugging ability for a fully autonomous system.
+Using **Gemma 3 (27B)** under local inference, the agent achieved a **pass@1 accuracy of 51.22%%** on the HumanEvalFix Python subset. The model never accessed the test cases during generation, relying only on the buggy code, docstring, instruction, and bug metadata. Despite the test-blind setup, it successfully repaired over half of the benchmark tasks, demonstrating strong reasoning and debugging ability for a fully autonomous system.
 
 ### Error Analysis
 
-Among the failed cases, most errors were **AssertionError (43)**, followed by **NameError (8)**, **TypeError (4)**, and **ValueError (1)**.  
-This indicates that the majority of failures occurred when the generated fix produced incorrect output logic rather than syntax or type issues. In other words, the agent usually generated runnable code, but the logic sometimes failed to meet the expected behavior defined by the tests.
+Among the failed cases, most errors were **AssertionError (64)**, followed by **NameError (10)**, and **TypeError (6)**. This indicates that the majority of failures occurred when the generated fix produced incorrect output logic rather than syntax or type issues. In other words, the agent usually generated runnable code, but the logic sometimes failed to meet the expected behavior defined by the tests.
 
 ### Repository Structure
 
-├── data
-│   ├── processed
-│   │   └── results_log.jsonl
-│   └── raw
-│       └── humanevalpack_python.jsonl
-├── organized_agent
-│   ├── nodes
-│   │   ├── analyze_bug_node.py
-│   │   ├── evaluate_result_node.py
-│   │   ├── generate_fix_node.py
-│   │   ├── load_problem_node.py
-│   │   ├── log_result_node.py
-│   │   └── run_tests_node.py
-│   ├── agent_helper_toolbox.py
-│   ├── dataset_loader.py
-│   ├── graph_definition.py
-│   ├── main.py
-│   └── state_schema.py
-├── reports
-│   ├── flow_graphs
-│   │   └── agent_logic_graph.png
-│   └── eda.py
-├── venv
-├── LICENSE
-├── README.md
-├── requirements.txt
-├── setup.py
-├── structure.txt
-└── tox.ini
+Please refer to **`structure.txt`** for a detailed overview of the repository layout and file organization.
