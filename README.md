@@ -48,10 +48,48 @@ The agent uses:
 - The **instruction**, and  
 - The **bug type** and **failure symptom** metadata  
 
-to reason about the problem and generate a corrected function.  
-The **unit tests were never shown** to the model during reasoning or generation.  
+The **unit tests were never shown** to the model during reasoning or generation to help reason about the problem and generate a corrected function.  
 They were only used afterward for **independent evaluation**, ensuring a fair, test-blind setup.  
 While access to the tests would likely improve performance, this approach better measures genuine reasoning and code understanding.
 
 
+### Results
 
+Using **Gemma 3 (27B)** under local inference, the agent achieved a **pass@1 accuracy of 54.5%** on the HumanEvalFix Python subset. The model never accessed the test cases during generation, relying only on the buggy code, docstring, instruction, and bug metadata. Despite the test-blind setup, it successfully repaired over half of the benchmark tasks, demonstrating strong reasoning and debugging ability for a fully autonomous system.
+
+### Error Analysis
+
+Among the failed cases, most errors were **AssertionError (43)**, followed by **NameError (8)**, **TypeError (4)**, and **ValueError (1)**.  
+This indicates that the majority of failures occurred when the generated fix produced incorrect output logic rather than syntax or type issues. In other words, the agent usually generated runnable code, but the logic sometimes failed to meet the expected behavior defined by the tests.
+
+### Repository Structure
+
+├── data
+│   ├── processed
+│   │   └── results_log.jsonl
+│   └── raw
+│       └── humanevalpack_python.jsonl
+├── organized_agent
+│   ├── nodes
+│   │   ├── analyze_bug_node.py
+│   │   ├── evaluate_result_node.py
+│   │   ├── generate_fix_node.py
+│   │   ├── load_problem_node.py
+│   │   ├── log_result_node.py
+│   │   └── run_tests_node.py
+│   ├── agent_helper_toolbox.py
+│   ├── dataset_loader.py
+│   ├── graph_definition.py
+│   ├── main.py
+│   └── state_schema.py
+├── reports
+│   ├── flow_graphs
+│   │   └── agent_logic_graph.png
+│   └── eda.py
+├── venv
+├── LICENSE
+├── README.md
+├── requirements.txt
+├── setup.py
+├── structure.txt
+└── tox.ini
