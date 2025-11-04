@@ -19,3 +19,5 @@ venv/
 .vscode/
 
 .history/
+
+__pycache__/
