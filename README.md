@@ -32,10 +32,10 @@ The diagram below shows the logic of the agent pipeline:
 
 ### How to Run
 
-# 1. Create environment and install dependencies
+1. Create environment and install dependencies
 pip install -r requirements.txt
 
-# 2. Run the main experiment
+2. Run the main experiment
 python -m organized_agent.main
 
 ### Data and Method
