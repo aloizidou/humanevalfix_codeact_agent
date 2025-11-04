@@ -1,7 +1,7 @@
 from datasets import load_dataset
 import json
 
-print("Downloading HumanEvalPack (Python subset)...")
+print("Downloading HumanEvalPack")
 dataset = load_dataset("bigcode/humanevalpack", "python")["test"]
 dataset.to_json("data/raw/humanevalpack_python.jsonl")
 
@@ -18,7 +18,7 @@ def load_humanevalpack_local(subsample: int = None):
             data = data[:subsample]
         return data
     except FileNotFoundError:
-        print("Local file not found, downloading from Hugging Face...")
+        print("Local file not found, downloading from Hugging Face")
         dataset = load_dataset("bigcode/humanevalpack", "python")["test"]
         dataset.to_json(local_path)
         print(f"Saved {len(dataset)} tasks to {local_path}")
